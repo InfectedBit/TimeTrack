@@ -39,7 +39,8 @@ The general idea of the project is to provide an application that starts with th
 
 ### Demo
 
-![Demo](https://youtu.be/0GPwqj_1JxQ)
+[![Demo](https://www.youtube.com/watch?v=0GPwqj_1JxQ)]
+
 
 
 ---
