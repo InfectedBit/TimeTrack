@@ -39,7 +39,7 @@ The general idea of the project is to provide an application that starts with th
 
 ### Demo
 
-![Demo](app/screenshots/showcase.webm)
+![Demo](https://youtu.be/0GPwqj_1JxQ)
 
 
 ---
