@@ -39,6 +39,8 @@ The general idea of the project is to provide an application that starts with th
 
 ### Demo (YouTube Link)
 
+*(Click con botón central o Ctrl+Click para abrir en nueva pestaña)*
+
 [![Demo](https://img.youtube.com/vi/0GPwqj_1JxQ/0.jpg)](https://www.youtube.com/watch?v=0GPwqj_1JxQ)
 
 
