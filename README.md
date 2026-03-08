@@ -37,10 +37,9 @@ The general idea of the project is to provide an application that starts with th
 |----------------|
 | ![Apps](app/screenshots/apps.png) |
 
-### Demo
+### Demo (YouTube Link)
 
-[![Demo](https://www.youtube.com/watch?v=0GPwqj_1JxQ)]
-
+[![Demo](https://img.youtube.com/vi/0GPwqj_1JxQ/0.jpg)](https://www.youtube.com/watch?v=0GPwqj_1JxQ)
 
 
 ---
