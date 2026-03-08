@@ -29,11 +29,11 @@ The general idea of the project is to provide an application that starts with th
 
 | Dashboard | Daily Activity |
 |-----------|----------------|
-| ![Dashboard](screenshots/dashboard.png) | ![Daily](screenshots/daily.png) |
+| ![Dashboard](app/screenshots/dashboard.png) | ![Daily](app/screenshots/daily.png) |
 
 | App Management | Settings |
 |----------------|----------|
-| ![Apps](screenshots/apps.png) | ![Settings](screenshots/settings.png) |
+| ![Apps](app/screenshots/apps.png) | ![Settings](app/screenshots/settings.png) |
 
 ---
 
