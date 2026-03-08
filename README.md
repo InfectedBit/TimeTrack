@@ -6,3 +6,4 @@ The general idea of the project is to provide an application that starts with th
 The apps to be tracked can be chosen automatically through filters, or added manually.
 
 
+### Showcase
