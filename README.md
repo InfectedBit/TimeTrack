@@ -25,7 +25,9 @@ The general idea of the project is to provide an application that starts with th
 
 ---
 
-## Screenshots
+## Showcase
+
+### Screenshots
 
 | Dashboard |
 |-----------|
@@ -34,6 +36,11 @@ The general idea of the project is to provide an application that starts with th
 | App Management |
 |----------------|
 | ![Apps](app/screenshots/apps.png) |
+
+### Demo
+
+![Demo](app/screenshots/dashboard.png)(app/screenshots/showcase.webm)
+
 
 ---
 
