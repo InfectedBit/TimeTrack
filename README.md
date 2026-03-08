@@ -204,5 +204,4 @@ TimeTrack/
 ---
 
 ## License
-
-MIT — free to use, modify, and distribute.
+GPL — free to use, modify, and distribute.
