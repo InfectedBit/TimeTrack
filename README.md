@@ -27,13 +27,13 @@ The general idea of the project is to provide an application that starts with th
 
 ## Screenshots
 
-| Dashboard | Daily Activity |
-|-----------|----------------|
-| ![Dashboard](app/screenshots/dashboard.png) | ![Daily](app/screenshots/daily.png) |
+| Dashboard |
+|-----------|
+| ![Dashboard](app/screenshots/dashboard.png) |
 
-| App Management | Settings |
-|----------------|----------|
-| ![Apps](app/screenshots/apps.png) | ![Settings](app/screenshots/settings.png) |
+| App Management |
+|----------------|
+| ![Apps](app/screenshots/apps.png) |
 
 ---
 
