@@ -1,0 +1,168 @@
+
+en las imágenes para cada app, queremos añadir la funcionalidad de descargar automáticamente para los juegos detectados imágenes/arte de forma automática, de fuentes oficiales.
+
+(mantenemos 3 modos entonces, pero 2 pertenecen a una doble opción):
+
+en linea: url (input de usuario directa;)
+en linea: autodetección
+cargar imagen (selector actual de imágenes locales)
+
+para la funcionalidad de autodetección, que deberá por tanto usar recursos en linea en algunos casos (lo mencionado), se indica que es del tipo "en linea" por ello.Ese proceso se realiza, si se selecciona esta opción, detectando las apps instaladas y filtradas por el TimeTrack, y busca iconos, banners, etc, en internet, las fuentes que valoremos.
+también tenemos autodetección de apps locales..... 
+Del mismo modo tenemos autodetección y USO De los recursos de las apps instaladas; esto se hará auto al seleccionar, pero los usuarios podrán seguir añadiendo de forma manual icono/imagen. por defecto se dirige a la ruta de la app trackeada.
+
+Este proceso de autodetección y búsqueda de banners se ejecutará también (si está activado previamente) cuando se añada una nueva app al trackeo.
+como hacerlo?...
+
+por ejemplo, sabemos que nvidia tiene banners para sus apps o ajustes,... así como los iconos de las apps (como, ya indexados?). Qué podemos utilizar, fuentes gratuitas y públicas, para esto?
+
+algo como steamdb, buscando por el nombre del .exe, para los juegos, tal vez?
+y que hay de otras apps (juegos indie, apps, etc), como visual studio code, apps nativas de Windows / sistema...
+¿cómo podemos hacerlo?
+
+para apps como visual studio, o adobe Photoshop, adobe Effects, etc, lo conveniente es, en el modo de carga automática, que recoja el .icon, imágenes de la app, de su carpeta de instalación, etc, como suele hacerse en otros casos. Eso sería el icon cuadrado de la app.
+
+Pensemos como hacer el resto.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+agregamos una pestaña en settings/Tracker para todas estas opciones nuevas del buscador de arte para las apps añadidas.
+las opciones que requerian api, su desplegable en la configuración mostrará una casilla para introducir el API Key de cada usuario en la plataforma pertinente. (en cada sección correspondiente a un servicio saldrá su sitio web para crear una cuenta y usar la api. Si es necesario en algún caso se podrá añadir un (i) popup para indicar los pasos, como "Login con Steam -> Profile -> API -> Generate and Paste below:"
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+al hacer click en una app de la dashboard, en la apps-table-card, 
+debe haber un botón que dirija directamente a esa app en manage-apps, permitiendo navegación cruzada de ese modo a ese card para ajustar la app.
+
+
+necesitamos añadir una opción de importar perfil (podemos exportar el perfil en json pero no importar..
+al importar se genera un nuevo perfil, el importado (no se reemplaza el actual) ).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+revisa de nuevo el menú de settings/arte, no has corregido los estilos al completo.
+está muy imcompleto comparado con elementos iguales en otros sitios de la app; botones, etc.
+revisalo bien. aún te faltan elementos por corregir, hazlo con todos.
+
+
+
+
+
+
+
+el problema a resolver es que la detección de iconos de apps del sistema sí puede buscar el nombre de la app:
+por ejemplo:
+
+Imperivm Online
+tracked a través de imperivmonline.exe
+
+ese .exe se puede encontrar en nuestro sistema:
+C:\Program Files (x86)\Imperivm Online\imperivmonline.exe
+
+pero nuestra app no acepta la extracción del icono del .exe.
+debemos añadir esa mejora - funcionalidad para añadir iconos de .exe además de los ya logrados..
+(vscodium.exe si se ha logrado fetchear, así como otras apps instaladas en el sistema). hay apps del sistema que tampoco se pudo fetchear,.. (windows 11 apps)
+muchos juegos sí se ha logrado obtener icono y banners de fuentes como las añadidas a través de api.
+
+necesitamos fuentes sin api, nativas del sistema o en línea pero sin api.
+
+
+------------------------------------------------------------------------
+
+
+en los settings de la app debe haber una batería de todo el artwork disponible, ya sea el cargado manualmente en algún momento como el fetched desde internet por cualquier medio..
+permitir modo "carrousel de banners", y modo fijo, donde se mantiene el seleccionado.
+
+también tenemos que cambiar la posición del icono en el listado de la dashboard por que descuadra el orden que teníamos antes si hay apps que no tienen icono encontrado/agregado.
+
+
+
+
+también debemos ajustar el tamaño del banner pues no se muestra bien. Debe ajustarse al tamaño pero manteniendo aspect ratio, reduciendo su tamaño..
+
+
+para el fetching de arte, queremos buscar más servicios gratuitos, sin necesidad de api key, por que no estamos logrando encontrar para los juegos añadidos.
+
+Piensa que tal y como funciona nuestra app, el tracking de apps se hace a partir de procesos; seguimos sin entender bien como funciona siempre , pues muchas apps tienen procesos Dobles del tipo:
+
+DyingLightTheBeast.exe
+ForzaHorizon6.exe
+y
+dyinglightgame_thebeast_x64_rwdi.exe
+Forza_horizon6_x64.exe
+(por ejemplo), pero siempre se detectan bien, y trackean bien.
+
+y nosotros luego podemos definir su nombre "custom" como "Forza Horizon 6", sin espacios, sin .exe, etc.
+ 
+Nos encanta que eso funcione en cualquier caso.
+ahora bien, para el track del arte, debemos abstraer esos 2 niveles: para buscar arte del juego, icono, o banner, tenemos el nombre que le dio el usuario, y el nombre del proceso trackeado.
+con esas dos, debemos ser capaces de encontrar.
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+
+el mismo efecto utilizado al hacer click en el botón manage de una app en la dashboard, e ir a su posición en manage-apps, queremos implementarlo al poner el ratón sobre uno de los puntos de tiempo en la gráfica de líneas, para cada app, en el onhover, Parpadear un poco, lento, en el accent de la app (color de la app), y las otras apps se atenúen un poco (muy poco) el resto de líneas, y veamos con claridad los puntos / lineas de la app en cuestión, sobre la que tenemos el cursor (donde ya indicamos el onhover del tiempo de esa sesión para esa app).
+
+
+
+------------------------------------------------------------------------------
+
+
+
+
+
+
+botón de clear art 
