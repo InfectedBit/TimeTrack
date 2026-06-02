@@ -33,7 +33,7 @@ echo       OK
 
 :: -- 3. Generate .ico from favicon PNG ----------------------------------------
 echo.
-echo [2/5] Generating icon ( favicon_1.png -> TimeTrack.ico )...
+echo [2/5] Generating icon (favicon_1.png -> TimeTrack.ico)...
 ".venv\Scripts\python.exe" -c "from PIL import Image; img=Image.open('images/favicon_1.png').convert('RGBA'); img.save('images/TimeTrack.ico', format='ICO', sizes=[(16,16),(32,32),(48,48),(256,256)])"
 if errorlevel 1 (
     echo       [warning] Could not generate .ico -- building without custom icon.
