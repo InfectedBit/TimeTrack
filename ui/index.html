@@ -96,22 +96,31 @@
   /* ── Charts ── */
   .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
   @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; cursor: pointer; transition: box-shadow .15s; min-width: 0; }
+  /* Las tarjetas son columnas flex: el gráfico (.chart-wrap) se queda con toda
+     la altura sobrante. Sin esto, al estirarse ambas tarjetas a la altura de la
+     más alta del grid, la de barras dejaba un hueco muerto bajo el eje X. */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; cursor: pointer; transition: box-shadow .15s; min-width: 0; display: flex; flex-direction: column; }
   .chart-card:hover { box-shadow: 0 0 0 1px rgba(99,102,241,.25); }
   .chart-card-expanded { grid-column: 1 / -1; }
-  .chart-card-expanded .chart-wrap { height: 360px; }
+  .chart-card-expanded .chart-wrap { min-height: 360px; }
   .charts-grid.charts-all { grid-template-columns: 1fr; }
-  .charts-grid.charts-all .chart-wrap { height: 340px; }
+  .charts-grid.charts-all .chart-wrap { min-height: 340px; }
   .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 8px; }
   .chart-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--mono); }
   .chart-mode-btns { display: flex; gap: 3px; flex-shrink: 0; }
   .chart-mode-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 2px 8px; border-radius: 5px; font-size: 11px; font-family: var(--mono); cursor: pointer; transition: all .12s; line-height: 1.6; }
   .chart-mode-btn.active, .chart-mode-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .chart-wrap { position: relative; height: 220px; }
+  /* El gráfico se queda con la altura sobrante de la tarjeta.
+     flex-basis:0 (no auto) es clave: con 'auto' el tamaño parte del contenido y
+     el canvas, que Chart.js dimensiona en línea, mantiene abierto el contenedor
+     al colapsar una tarjeta expandida. Con basis 0 manda el espacio libre. */
+  .chart-wrap { position: relative; flex: 1 1 0; min-height: 220px; }
 
   /* Scroll lateral del gráfico de barras: el canvas crece con el nº de apps
      y el contenedor desplaza en horizontal en vez de comprimir las barras. */
-  .bar-chart-area { position: relative; }
+  /* basis:auto aquí (no 0): este contenedor debe tomar su altura del contenido
+     para que la tarjeta crezca con él. El basis:0 solo lo necesita .chart-wrap. */
+  .bar-chart-area { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
   .bar-axis-overlay { position: absolute; top: 0; left: 0; pointer-events: none; display: none; }
   .bar-axis-overlay.visible { display: block; }
   .chart-wrap.scroll-x { overflow-x: auto; overflow-y: hidden; }
@@ -1219,6 +1228,14 @@ function renderTable(summary) {
 // el canvas crece y el contenedor (.scroll-x) desplaza en horizontal.
 const BAR_SLOT_PX = 46;
 
+// Chart.js reserva por defecto solo el 72% del hueco de cada categoría
+// (categoryPercentage 0.8 x barPercentage 0.9), dejando las barras flacas y
+// mucho aire muerto cuando hay pocas apps. Con estos valores ocupan ~92%.
+// maxBarThickness evita que con una o dos apps salga un bloque descomunal.
+const BAR_CATEGORY_PCT = 1.0;
+const BAR_BAR_PCT      = 0.92;
+const BAR_MAX_THICK    = 220;
+
 function _sizeBarInner(count) {
   const wrap  = document.getElementById('barScroll');
   const inner = document.getElementById('barInner');
@@ -1282,7 +1299,12 @@ function renderBarChart(summary) {
   } else {
     chartBar = new Chart(document.getElementById('chartBar').getContext('2d'), {
       type: 'bar',
-      data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }] },
+      data: { labels, datasets: [{
+        data, backgroundColor: colors, borderRadius: 6, borderSkipped: false,
+        categoryPercentage: BAR_CATEGORY_PCT,
+        barPercentage:      BAR_BAR_PCT,
+        maxBarThickness:    BAR_MAX_THICK,
+      }] },
       plugins: [barAxisOverlay],
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
@@ -1291,9 +1313,9 @@ function renderBarChart(summary) {
           tooltip: { callbacks: { label: ctx => fmtHours(ctx.parsed.y) } }
         },
         scales: {
-          // autoSkip:false — con scroll lateral cabe el nombre de todas las apps
-          x: { ticks: { ...chartTick(), autoSkip: false, maxRotation: 60, minRotation: 45 },
-               grid: chartGrid() },
+          // autoSkip:false — con scroll lateral cabe el nombre de todas las apps.
+          // Sin tocar la rotación: Chart.js la decide sola, horizontal cuando cabe.
+          x: { ticks: { ...chartTick(), autoSkip: false }, grid: chartGrid() },
           y: { ticks: { ...chartTick(), callback: v => fmtHours(v) }, grid: chartGrid(), beginAtZero: true }
         }
       }
