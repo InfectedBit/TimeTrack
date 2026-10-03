@@ -27,9 +27,9 @@
 |-----------|----------------|
 | ![Dashboard](screenshots/Dashboard_1.png) | ![Dashboard](screenshots/Dashboard_2.png) |
 
-| App Management | Settings |
-|----------------|----------|
-| ![Apps](screenshots/ManageApps_1.png) | ![Settings](screenshots/ManageApps_2.png) |
+| App Management |
+|----------------|
+| ![Apps](screenshots/ManageApps_1.png) |
 
 ---
 
