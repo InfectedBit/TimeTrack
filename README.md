@@ -38,9 +38,14 @@
 ### Option A — Download the pre-built release *(easiest)*
 
 1. Download **`TimeTrack.exe`** from the [Releases](../../releases/latest) page
-2. Put it in a folder of its own (e.g. `C:\TimeTrack\`) — it creates its database,
-   log and artwork folder next to itself, so it needs somewhere writable
+2. Put it anywhere writable — everything it generates (database, log, artwork)
+   goes into a single **`TimeTrackData\`** folder beside it, so it won't scatter
+   files around if you drop it in a folder you already use
 3. Double-click it
+
+> Upgrading from v0.13 or earlier? Your existing `apptracker.db`, log and
+> artwork are moved into `TimeTrackData\` automatically on first run — nothing
+> is lost. Close any running copy first so the database isn't locked.
 
 No Python required: the interpreter and every dependency are bundled inside.
 The app starts in the system tray and opens the dashboard in your browser
@@ -197,6 +202,7 @@ TimeTrack/
 │   └── apps.html          App management
 ├── images/                Icons and assets
 ├── screenshots/           README screenshots (add yours here)
+├── TimeTrackData/         Generated at runtime — database, log, downloaded artwork
 ├── main.py                FastAPI app + server (port 31337)
 ├── tray.py                Entry point — system tray + server launcher
 ├── requirements.txt       Python dependencies

@@ -32,7 +32,13 @@ if str(BASE_DIR) not in sys.path:
 # ── Logging PRIMERO — antes de importar main (que también llama basicConfig) ──
 # Al configurar aquí primero, el basicConfig de main.py queda como no-op y
 # todos los logs (incluidos errores de uvicorn) van al archivo.
-LOG_FILE = BASE_DIR / "timetrack.log"
+#
+# core.database define dónde viven los datos (TimeTrackData/) y migra el layout
+# antiguo al importarse. Solo usa la stdlib, así que es seguro traerlo antes de
+# configurar el logging y antes del bloque que detecta dependencias ausentes.
+from core.database import LOG_PATH, DATA_DIR, MIGRATED_FILES
+
+LOG_FILE = LOG_PATH
 
 _log_handlers: list[logging.Handler] = [
     logging.FileHandler(LOG_FILE, encoding="utf-8"),
@@ -220,8 +226,12 @@ def main():
     logger.info("=" * 48)
     logger.info("  TimeTrack arrancando...")
     logger.info("  Dashboard -> http://127.0.0.1:%d", PORT)
-    logger.info("  Log -> %s", LOG_FILE)
+    logger.info("  Datos -> %s", DATA_DIR)
+    logger.info("  Log   -> %s", LOG_FILE)
     logger.info("=" * 48)
+    if MIGRATED_FILES:
+        logger.info("Datos de una versión anterior movidos a %s: %s",
+                    DATA_DIR.name, ", ".join(MIGRATED_FILES))
 
     # Servidor en thread background
     server_thread = threading.Thread(target=run_server, daemon=True, name="uvicorn")

@@ -3,20 +3,105 @@ AppTracker — Database Layer
 SQLite con WAL mode, schema limpio y funciones bien alineadas con la API.
 """
 
+import os
 import sys
+import shutil
 import sqlite3
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# En modo frozen (PyInstaller), la DB vive junto al .exe; en dev, junto a main.py
-DB_PATH = (
-    Path(sys.executable).parent / "apptracker.db"
+# Raíz de la aplicación: junto al .exe en modo frozen, junto a main.py en dev.
+# TIMETRACK_HOME la reubica (instalaciones portables, datos en otra unidad, tests).
+_home = os.environ.get("TIMETRACK_HOME")
+APP_DIR = Path(_home) if _home else (
+    Path(sys.executable).parent
     if getattr(sys, 'frozen', False)
-    else Path(__file__).parent.parent / "apptracker.db"
+    else Path(__file__).parent.parent
 )
 
-DATA_DIR   = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent.parent
+# Todo lo que genera la app (BD, log, carátulas) vive en un único subdirectorio,
+# para no esparcir ficheros por la carpeta donde el usuario deje el ejecutable.
+DATA_DIR_NAME = "TimeTrackData"
+
+_DB_NAME    = "apptracker.db"
+_DB_SIDECAR = ("apptracker.db-wal", "apptracker.db-shm")
+_LOG_NAME   = "timetrack.log"
+
+
+def _migrate_legacy_layout(data_dir: Path) -> tuple[list[str], bool]:
+    """
+    Hasta la 0.13 la BD, el log y las carátulas quedaban sueltos junto al
+    ejecutable. Se mueven a TimeTrackData/ la primera vez.
+
+    Devuelve (ficheros_movidos, ok). `ok=False` significa que la BD no se pudo
+    mover —normalmente porque otra instancia la tiene abierta— y entonces hay
+    que SEGUIR USANDO el layout antiguo en esta ejecución.
+
+    Se usa os.replace (renombrado atómico, mismo volumen) en lugar de
+    shutil.move a propósito: si el fichero está bloqueado, shutil.move recurre a
+    copiar y falla al borrar el original, dejando una copia a medias en el
+    destino. En el siguiente arranque la app abriría esa copia obsoleta y el
+    usuario vería desaparecer su historial reciente.
+    """
+    legacy_db = APP_DIR / _DB_NAME
+    new_db    = data_dir / _DB_NAME
+    legacy_imgs = APP_DIR / "images" / "app-images"
+    new_imgs    = data_dir / "images" / "app-images"
+
+    needs_db   = legacy_db.exists() and not new_db.exists()
+    needs_imgs = legacy_imgs.is_dir() and not new_imgs.exists()
+    if not needs_db and not needs_imgs:
+        return [], True
+
+    moved: list[str] = []
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return [], False
+
+    if needs_db:
+        try:
+            os.replace(legacy_db, new_db)      # atómico: o entero, o nada
+            moved.append(_DB_NAME)
+        except OSError:
+            # BD bloqueada o sin permisos → abortar y seguir con el layout viejo
+            return [], False
+        # Auxiliares del WAL y log: su pérdida no es crítica
+        for name in (*_DB_SIDECAR, _LOG_NAME):
+            src, dst = APP_DIR / name, data_dir / name
+            if src.exists() and not dst.exists():
+                try:
+                    os.replace(src, dst)
+                    moved.append(name)
+                except OSError:
+                    pass
+
+    if needs_imgs:
+        try:
+            new_imgs.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(legacy_imgs, new_imgs)
+            moved.append("images/app-images")
+            try:
+                (APP_DIR / "images").rmdir()   # solo si queda vacío
+            except OSError:
+                pass
+        except OSError:
+            pass
+
+    return moved, True
+
+
+_data_dir = APP_DIR / DATA_DIR_NAME
+MIGRATED_FILES, _migration_ok = _migrate_legacy_layout(_data_dir)
+
+# Si la migración no pudo mover la BD, se mantiene el layout antiguo: es
+# preferible seguir escribiendo donde están los datos del usuario que arrancar
+# con una base vacía.
+LEGACY_LAYOUT = not _migration_ok
+DATA_DIR   = APP_DIR if LEGACY_LAYOUT else _data_dir
+DB_PATH    = DATA_DIR / _DB_NAME
+LOG_PATH   = DATA_DIR / _LOG_NAME
 IMAGES_DIR = DATA_DIR / "images" / "app-images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 

@@ -258,7 +258,14 @@
   }
 
   /* ── Edit modal ── */
-  .edit-fields { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+  /* Zona desplazable del modal de edición.
+     flex:1 1 auto + min-height:0 la convierten en el contenedor de scroll (con
+     min-height:auto no puede encoger por debajo de su contenido y el modal, que
+     está topado a 85vh, acaba recortando en vez de desplazar).
+     Los hijos llevan flex-shrink:0: si se comprimen, el contenido "cabe" siempre
+     y nunca llega a haber scroll — era lo que escondía el panel de imágenes. */
+  .edit-fields { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+  .edit-fields > * { flex-shrink: 0; }
   .edit-actions { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
 
   /* Checkbox toggle for edit modal */
@@ -313,7 +320,8 @@
   .img-preview-row { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .img-preview { border-radius: 6px; object-fit: cover; border: 1px solid var(--border); display: block; }
   .img-preview-icon   { width: 64px; height: 64px; object-fit: contain; }
-  .img-preview-banner { width: 100%; max-height: 120px; object-fit: cover; }
+  /* contain, no cover: el banner se ve entero en vez de recortado por arriba y abajo */
+  .img-preview-banner { width: 100%; max-height: 150px; object-fit: contain; background: var(--bg); }
   .img-preview-poster { width: 64px; height: 96px; }
   .img-preview-empty { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 
@@ -358,7 +366,7 @@
 
     <!-- Section: Add application -->
     <details class="manage-section" id="sectionAdd" open
-             ontoggle="savePrefs({section_add_open: this.open})">
+             ontoggle="window.savePrefs&&savePrefs({section_add_open: this.open})">
       <summary>
         <span>➕ Add application</span>
         <span class="manage-section-arrow">▶</span>
@@ -383,7 +391,7 @@
 
         <!-- Game auto-detection collapsible card -->
         <details class="inner-section" id="gameDetectSection" open
-                 ontoggle="savePrefs({game_detect_open: this.open})">
+                 ontoggle="window.savePrefs&&savePrefs({game_detect_open: this.open})">
           <summary>
             <div class="inner-section-title-row">
               <span onclick="event.stopPropagation()">
@@ -447,7 +455,7 @@
 
     <!-- Section: Tracked applications -->
     <details class="manage-section" id="sectionApps" open
-             ontoggle="savePrefs({section_apps_open: this.open})">
+             ontoggle="window.savePrefs&&savePrefs({section_apps_open: this.open})">
       <summary>
         <span>📋 Tracked applications</span>
         <span class="manage-section-arrow">▶</span>
