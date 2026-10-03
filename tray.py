@@ -264,6 +264,14 @@ def main():
 
         tracker.set_notify_callback(_on_game_detected)
 
+        # Permite que el botón "Probar" de Ajustes use el modo globo
+        try:
+            from core.notifications import set_tray_icon, ensure_app_id
+            set_tray_icon(icon)
+            ensure_app_id()
+        except Exception as exc:
+            logger.debug("Notificaciones: %s", exc)
+
         logger.info("Tray icon activo. Clic derecho para opciones.")
         icon.run()   # bloqueante — mantiene el proceso vivo
 

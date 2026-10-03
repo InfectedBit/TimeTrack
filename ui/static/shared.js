@@ -456,6 +456,112 @@ async function undismiss(exe) {
   await loadDismissedList();
 }
 
+// ── Aviso de juego detectado, dentro de la app ───────────────────────────────
+// Es el respaldo de las notificaciones del sistema: si se te pasa el toast (o el
+// globo de bandeja, que Windows firma con un identificador ilegible), el aviso
+// sigue aquí hasta que respondas. Aparece SIEMPRE, sea cual sea el modo elegido.
+// Vive en shared.js para que dashboard y Manage Apps compartan exactamente el
+// mismo comportamiento.
+
+function renderPendingGames(pending) {
+  let banner = document.getElementById('pendingGamesBanner');
+  if (!pending || !pending.length) {
+    if (banner) banner.remove();
+    return;
+  }
+  const host = document.querySelector('main');
+  if (!host) return;
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'pendingGamesBanner';
+    banner.style.cssText = [
+      'background:rgba(99,102,241,.08)',
+      'border:1px solid rgba(99,102,241,.3)',
+      'border-radius:10px',
+      'padding:12px 16px',
+      'margin-bottom:16px',
+      'font-family:var(--mono)',
+      'font-size:12px',
+    ].join(';');
+    host.prepend(banner);
+  }
+  banner.innerHTML =
+    '<div style="font-weight:700;margin-bottom:8px;font-size:13px">🎮 Juego(s) detectado(s) — registrando…</div>' +
+    pending.map(p => {
+      const exe  = typeof p === 'string' ? p : p.exe_name;
+      const name = typeof p === 'string' ? p : (p.display_name || p.exe_name);
+      return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+      <span style="flex:1;min-width:120px;font-family:var(--mono)">${esc(name)}</span>
+      <button class="btn btn-sm btn-primary" onclick="respondGame('${esc(exe)}','yes')">✓ Sí</button>
+      <button class="btn btn-sm btn-danger" onclick="respondGame('${esc(exe)}','no')">✗ No</button>
+      <button class="btn btn-sm btn-danger" style="opacity:.7"
+        onclick="respondGame('${esc(exe)}','never')">✗ No volver a preguntar</button>
+    </div>`}).join('');
+}
+
+async function respondGame(exe, action) {
+  await api(`/api/tracker/pending-games/${encodeURIComponent(exe)}`, 'POST', { action });
+  renderPendingGames([]);                                  // feedback inmediato
+  if (typeof refresh === 'function') refresh();            // dashboard
+  else if (typeof loadApps === 'function') loadApps();     // manage apps
+}
+
+// Sondeo del aviso para páginas que no tienen su propio statusRefresh
+function startPendingGamesPoll(ms = 3000) {
+  const tick = async () => {
+    try {
+      const st = await api('/api/tracker/status');
+      renderPendingGames(st.pending_games || []);
+    } catch {}
+  };
+  tick();
+  return setInterval(tick, ms);
+}
+
+// ── Notificaciones ───────────────────────────────────────────────────────────
+
+async function loadNotifStatus() {
+  const el = document.getElementById('notifStatus');
+  const hint = document.getElementById('notifHint');
+  if (!el) return;
+  try {
+    const s = await api('/api/notifications/status');
+    if (s.available) {
+      el.textContent = '✓ Toast disponible';
+      el.style.color = 'var(--green)';
+      if (hint) hint.textContent = s.app_id
+        ? `Los avisos se firman como "TimeTrack".`
+        : 'Los avisos se firmarán como "TimeTrack" al enviar el primero.';
+    } else {
+      el.textContent = '✗ Toast no disponible';
+      el.style.color = 'var(--danger)';
+      if (hint) hint.textContent = s.frozen
+        ? 'Esta build no incluye win11toast — se usará el globo de bandeja.'
+        : 'Instálalo con: .venv\\Scripts\\pip.exe install win11toast';
+    }
+  } catch {
+    el.textContent = '';
+  }
+}
+
+async function testNotification() {
+  const el = document.getElementById('notifStatus');
+  const mode = document.querySelector('#notifModeOpts .fmt-opt.selected')?.dataset.mode;
+  if (el) { el.textContent = 'enviando…'; el.style.color = 'var(--muted)'; }
+  try {
+    const r = await api('/api/notifications/test', 'POST', { mode });
+    if (el) {
+      el.textContent = r.ok ? `✓ enviado (${r.sent})` : '✗ ' + (r.detail || 'falló');
+      el.style.color = r.ok ? 'var(--green)' : 'var(--danger)';
+    }
+    const hint = document.getElementById('notifHint');
+    if (hint && r.detail) hint.textContent = r.detail;
+  } catch (e) {
+    if (el) { el.textContent = '✗ error'; el.style.color = 'var(--danger)'; }
+  }
+}
+
 // ── Mantenimiento: sesiones infladas por apagones antiguos ───────────────────
 // A partir del sistema de latido ya no se generan, pero las que quedaron en la BD
 // siguen falseando los totales. Aquí se listan y se recortan o eliminan.
@@ -833,6 +939,7 @@ function _buildSettingsModal() {
     <!-- Tab: Tracker -->
     <div class="settings-body" id="tabTracker" style="display:none">
       <div>
+      <br>
         <div class="setting-group-label">Detección de juegos</div>
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--mono);font-size:12px">
           <input type="checkbox" id="gameDetectToggle" onchange="setGameDetect(this.checked)" style="width:16px;height:16px;cursor:pointer">
@@ -845,12 +952,18 @@ function _buildSettingsModal() {
       <div>
         <div class="setting-group-label">Tipo de notificación</div>
         <div style="display:flex;gap:8px" id="notifModeOpts">
-          <button class="fmt-opt" data-mode="tray"  onclick="setNotifMode('tray')">Tray menu</button>
           <button class="fmt-opt" data-mode="toast" onclick="setNotifMode('toast')">Windows Toast</button>
+          <button class="fmt-opt" data-mode="tray"  onclick="setNotifMode('tray')">Globo de bandeja</button>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono)">
-          Toast requiere <code>win11toast</code> instalado.
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:var(--mono);line-height:1.6">
+          Elijas el que elijas, el aviso con <strong>Sí / No / No volver a preguntar</strong>
+          aparece siempre dentro de la app y se queda hasta que respondas.<br>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="testNotification()">🔔 Probar notificación</button>
+          <span style="font-size:10px;font-family:var(--mono)" id="notifStatus"></span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono)" id="notifHint"></div>
       </div>
       <div>
         <div class="setting-group-label">Lista "No preguntar más"</div>
@@ -914,7 +1027,8 @@ function _buildSettingsModal() {
 
       <!-- Master artwork toggle -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 20px;border-bottom:1px solid var(--border);margin-bottom:4px">
-        <div>
+      <div>
+        <br>  
           <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">Mostrar arte</div>
           <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px">
             Iconos, banners y pósters en cards y paneles.<br>Los archivos descargados se conservan al desactivar.
@@ -1051,7 +1165,8 @@ function _buildSettingsModal() {
 
     <!-- Tab: Profiles -->
     <div class="settings-body" id="tabProfiles" style="display:none">
-      <div>
+    <br>  
+    <div>
         <div class="setting-group-label">Profiles</div>
         <div id="profilesList"></div>
         <button class="btn-ghost" style="margin-top:4px;width:100%;font-size:12px" onclick="newProfile()">+ New profile</button>

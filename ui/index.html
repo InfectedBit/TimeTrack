@@ -2244,6 +2244,7 @@ async function openSettings() {
     if (cnt) cnt.textContent = dismissed.length ? `${dismissed.length} entrada(s)` : '';
     if (_dismissedOpen) await loadDismissedList();
     renderDetectMethods(appSettings.detect_methods || []);
+    loadNotifStatus();
     loadGamePaths();
     // Arte tab
     const aft=document.getElementById('autoFetchToggle'); if(aft) aft.checked=!!appSettings.auto_fetch_images;
@@ -2736,45 +2737,7 @@ function setPointMinMinutes(v) {
 
 // ── Game detection ─────────────────────────────────────────────────────────────
 
-function renderPendingGames(pending) {
-  let banner = document.getElementById('pendingGamesBanner');
-  if (!pending || !pending.length) {
-    if (banner) banner.remove();
-    return;
-  }
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'pendingGamesBanner';
-    banner.style.cssText = [
-      'background:rgba(99,102,241,.08)',
-      'border:1px solid rgba(99,102,241,.3)',
-      'border-radius:10px',
-      'padding:12px 16px',
-      'margin-bottom:16px',
-      'font-family:var(--mono)',
-      'font-size:12px',
-    ].join(';');
-    document.querySelector('main').prepend(banner);
-  }
-  banner.innerHTML =
-    '<div style="font-weight:700;margin-bottom:8px;font-size:13px">🎮 Juego(s) detectado(s) — registrando…</div>' +
-    pending.map(p => {
-      const exe  = typeof p === 'string' ? p : p.exe_name;
-      const name = typeof p === 'string' ? p : (p.display_name || p.exe_name);
-      return `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-      <span style="flex:1;min-width:120px;font-family:var(--mono)">${esc(name)}</span>
-      <button class="btn btn-sm btn-primary" onclick="respondGame('${esc(exe)}','yes')">✓ Sí</button>
-      <button class="btn btn-sm btn-danger" onclick="respondGame('${esc(exe)}','no')">✗ No</button>
-      <button class="btn btn-sm btn-danger" style="opacity:.7"
-        onclick="respondGame('${esc(exe)}','never')">✗ No volver a preguntar</button>
-    </div>`}).join('');
-}
-
-async function respondGame(exe, action) {
-  await api(`/api/tracker/pending-games/${encodeURIComponent(exe)}`, 'POST', { action });
-  refresh();
-}
+// renderPendingGames y respondGame viven en shared.js — los comparten ambas páginas
 
 async function setGameDetect(enabled) {
   const status = await api('/api/tracker/status');

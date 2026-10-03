@@ -30,6 +30,10 @@ a = Analysis(
     datas=[
         ('ui',                  'ui'),       # HTML dashboard files
         ('images/timetrack/favicon_1.png','images/timetrack'),   # tray/favicon assets
+        # El .ico va embebido en el PE como icono del ejecutable, pero además se
+        # necesita como fichero: las notificaciones lo copian al directorio de
+        # datos para registrarlo como icono del remitente en los toast.
+        ('images/timetrack/TimeTrack.ico','images/timetrack'),
     ] + _uvi_d + _any_d,
     hiddenimports=_uvi_h + _any_h + [
         # pystray Windows backend

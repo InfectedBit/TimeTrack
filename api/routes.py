@@ -397,6 +397,25 @@ def move_sessions(app_id: int, body: SessionMove):
     return {"ok": True, "moved": count}
 
 
+# ── Notificaciones ────────────────────────────────────────────────────────────
+
+@router.get("/notifications/status")
+def notifications_status():
+    """Si la integración de toast está disponible — se muestra en Ajustes."""
+    from core.notifications import toast_status
+    st = toast_status()
+    st["mode"] = db.get_setting("notification_mode", "tray")
+    return st
+
+
+@router.post("/notifications/test")
+def notifications_test(body: dict = Body(default={})):
+    """Envía una notificación de prueba con el modo indicado (o el configurado)."""
+    from core.notifications import send_test_toast
+    mode = body.get("mode") or db.get_setting("notification_mode", "tray")
+    return send_test_toast(mode)
+
+
 # ── Mantenimiento: sesiones infladas por apagones antiguos ────────────────────
 
 @router.get("/maintenance/long-sessions")

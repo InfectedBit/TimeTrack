@@ -668,6 +668,9 @@ async function init() {
   try { const s = await api('/api/settings'); showImages = !!s.show_app_images; } catch {}
   await Promise.all([loadApps(), loadTrackerSettings(), pollResources()]);
   setInterval(pollResources, 8000);
+  // Aviso de juego detectado: el dashboard lo pinta en su statusRefresh; aquí
+  // hace falta su propio sondeo para que no se pierda si estás en esta página.
+  startPendingGamesPoll(3000);
 
   // Cross-nav: highlight a specific app card if ?highlight=id in URL
   const _hlId = parseInt(new URLSearchParams(location.search).get('highlight') || '0');
@@ -715,6 +718,7 @@ async function loadTrackerSettings() {
     const main = document.getElementById('gameDetectMain');
     if (main) main.checked = !!s.game_detect;
     renderDetectMethods(s.detect_methods || []);
+    loadNotifStatus();
     const dismissed = await api('/api/dismissed-games');
     updateDismissedCount(dismissed.length);
     await loadGamePaths();
