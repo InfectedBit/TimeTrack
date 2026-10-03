@@ -25,11 +25,11 @@
 
 | Dashboard | Daily Activity |
 |-----------|----------------|
-| ![Dashboard](screenshots/dashboard.png) | ![Daily](screenshots/daily.png) |
+| ![Dashboard](screenshots/Dashboard_1.png) | ![Dashboard](screenshots/Dashboard_2.png) |
 
 | App Management | Settings |
 |----------------|----------|
-| ![Apps](screenshots/apps.png) | ![Settings](screenshots/settings.png) |
+| ![Apps](screenshots/ManageApps_1.png) | ![Settings](screenshots/ManageApps_2.png) |
 
 ---
 
