@@ -23,7 +23,7 @@
 
 ## Screenshots
 
-| Dashboard | Daily Activity |
+| Dashboard |   |
 |-----------|----------------|
 | ![Dashboard](screenshots/Dashboard_1.png) | ![Dashboard](screenshots/Dashboard_2.png) |
 
