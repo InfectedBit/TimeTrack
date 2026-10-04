@@ -268,7 +268,22 @@ async function applyArtToAll() {
   }
 }
 
+// Cacheada: la versión no cambia durante la sesión, no hace falta pedirla
+// cada vez que se abre el modal.
+let _appVersionCache = null;
+async function loadVersionTag() {
+  const el = document.getElementById('settingsVersionTag');
+  if (!el) return;
+  if (_appVersionCache) { el.textContent = `v${_appVersionCache}`; return; }
+  try {
+    const info = await api('/api/instance');
+    _appVersionCache = info.version;
+    el.textContent = `v${info.version}`;
+  } catch {}
+}
+
 async function openSettings() {
+  loadVersionTag();
   const prefs = getPrefs();
   // Visual tab
   const mode = prefs.detail_mode || 'panel';
@@ -300,13 +315,13 @@ async function openSettings() {
       const btn = el.nextElementSibling;
       if (btn && btn.classList.contains('btn-eye')) { btn.classList.remove('hidden-state'); btn.title = 'Mostrar key'; }
     });
-    document.querySelectorAll('#notifModeOpts .fmt-opt').forEach(b =>
-      b.classList.toggle('selected', b.dataset.mode===(s.notification_mode||'tray')));
+    _syncNotifModeUI(s.notification_mode||'tray');
     renderDetectMethods(s.detect_methods||[]);
     const dismissed=await api('/api/dismissed-games');
     updateDismissedCount(dismissed.length);
     if(_dismissedOpen) await loadDismissedList();
     loadGamePaths();
+    loadAutostartStatus();
   } catch(_){}
   loadProfilesSettings();
   switchSettingsTab(document.querySelector('.settings-tab[data-tab="visual"]'));
@@ -402,10 +417,27 @@ async function setGameDetect(enabled) {
   const gdm=document.getElementById('gameDetectMain');   if(gdm) gdm.checked=enabled;
 }
 
+// El modo 'off' apaga toast/globo, pero el aviso Sí/No/No preguntar más de la
+// propia app sigue apareciendo igual (el tracker ya encola el juego pendiente
+// antes de intentar notificar) — la decisión de añadir una app es siempre
+// dentro de TimeTrack, nunca algo que ocurra desde una notificación del SO.
+function _syncNotifModeUI(mode) {
+  document.querySelectorAll('#notifModeOpts .fmt-opt').forEach(b =>
+    b.classList.toggle('selected', b.dataset.mode === mode));
+  const testRow = document.getElementById('notifTestRow');
+  const explain = document.getElementById('notifModeExplain');
+  const isOff = mode === 'off';
+  if (testRow) testRow.style.display = isOff ? 'none' : 'flex';
+  if (explain) explain.innerHTML = isOff
+    ? 'Sin avisos de Windows. El juego pendiente de confirmar sigue apareciendo ' +
+      '(<strong>Sí / No / No volver a preguntar</strong>) dentro del dashboard y de Manage Apps.'
+    : 'Elijas el que elijas, el aviso con <strong>Sí / No / No volver a preguntar</strong> ' +
+      'aparece siempre dentro de la app y se queda hasta que respondas.<br>';
+}
+
 async function setNotifMode(mode) {
   await api('/api/settings','POST',{notification_mode:mode});
-  document.querySelectorAll('#notifModeOpts .fmt-opt').forEach(b =>
-    b.classList.toggle('selected', b.dataset.mode===mode));
+  _syncNotifModeUI(mode);
 }
 
 async function clearDismissed() {
@@ -517,6 +549,32 @@ function startPendingGamesPoll(ms = 3000) {
   };
   tick();
   return setInterval(tick, ms);
+}
+
+// ── Inicio automático ─────────────────────────────────────────────────────────
+
+async function loadAutostartStatus() {
+  const chk  = document.getElementById('autostartToggle');
+  const hint = document.getElementById('autostartHint');
+  if (!chk) return;
+  try {
+    const s = await api('/api/autostart/status');
+    chk.checked  = !!s.enabled;
+    chk.disabled = !s.supported;
+    if (hint) hint.textContent = s.supported
+      ? 'Crea un acceso directo en tu carpeta de inicio de Windows. Si mueves la instalación, se repara solo la próxima vez que abras TimeTrack.'
+      : 'Solo disponible en el ejecutable compilado (no en modo desarrollo).';
+  } catch {}
+}
+
+async function setAutostart(enabled) {
+  const chk = document.getElementById('autostartToggle');
+  try {
+    const s = await api('/api/autostart', 'POST', { enabled });
+    if (chk) chk.checked = !!s.enabled;
+  } catch {
+    if (chk) chk.checked = !enabled;   // revertir si la llamada falló
+  }
 }
 
 // ── Notificaciones ───────────────────────────────────────────────────────────
@@ -801,7 +859,10 @@ function _buildSettingsModal() {
 <div class="modal-bg" id="settingsModal" onclick="if(event.target===this)closeSettings()">
   <div class="settings-modal">
     <div class="modal-head">
-      <h3>⚙ Settings</h3>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <h3>⚙ Settings</h3>
+        <span style="font-size:10px;color:var(--muted);font-family:var(--mono)" id="settingsVersionTag"></span>
+      </div>
       <button class="modal-close" onclick="closeSettings()">×</button>
     </div>
     <div class="settings-tabs">
@@ -950,16 +1011,25 @@ function _buildSettingsModal() {
         </div>
       </div>
       <div>
+        <div class="setting-group-label">Inicio con Windows</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--mono);font-size:12px">
+          <input type="checkbox" id="autostartToggle" onchange="setAutostart(this.checked)" style="width:16px;height:16px;cursor:pointer">
+          Iniciar TimeTrack automáticamente con Windows
+        </label>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono)" id="autostartHint"></div>
+      </div>
+      <div>
         <div class="setting-group-label">Tipo de notificación</div>
-        <div style="display:flex;gap:8px" id="notifModeOpts">
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="notifModeOpts">
           <button class="fmt-opt" data-mode="toast" onclick="setNotifMode('toast')">Windows Toast</button>
           <button class="fmt-opt" data-mode="tray"  onclick="setNotifMode('tray')">Globo de bandeja</button>
+          <button class="fmt-opt" data-mode="off"   onclick="setNotifMode('off')">Desactivadas</button>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:var(--mono);line-height:1.6">
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:var(--mono);line-height:1.6" id="notifModeExplain">
           Elijas el que elijas, el aviso con <strong>Sí / No / No volver a preguntar</strong>
           aparece siempre dentro de la app y se queda hasta que respondas.<br>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap" id="notifTestRow">
           <button class="btn btn-ghost btn-sm" onclick="testNotification()">🔔 Probar notificación</button>
           <span style="font-size:10px;font-family:var(--mono)" id="notifStatus"></span>
         </div>

@@ -719,6 +719,7 @@ async function loadTrackerSettings() {
     if (main) main.checked = !!s.game_detect;
     renderDetectMethods(s.detect_methods || []);
     loadNotifStatus();
+    loadAutostartStatus();
     const dismissed = await api('/api/dismissed-games');
     updateDismissedCount(dismissed.length);
     await loadGamePaths();

@@ -1,4 +1,4 @@
-"""
+r"""
 TimeTrack — Entry Point con System Tray
 Lanza el servidor uvicorn en background y muestra un icono en la bandeja del sistema.
 
@@ -59,6 +59,9 @@ try:
     import uvicorn
     from main import app, PORT
     from core.tracker import tracker
+    from core import instance
+    from core import autostart
+    from core.version import __version__
 except ModuleNotFoundError as e:
     # Si falta uvicorn, probablemente se está usando el Python del sistema
     msg = (
@@ -101,16 +104,32 @@ def _make_icon_image(paused: bool = False):
 
 # ── Tray icon ─────────────────────────────────────────────────────────────────
 
+# Referencia al icono: la necesita el cierre ordenado cuando una versión más
+# nueva nos releva, para que el icono desaparezca en el acto y no quede un
+# fantasma en la bandeja hasta que el usuario pase el ratón por encima.
+_icon_ref = None
+
+
+def _title(paused: bool = False) -> str:
+    """
+    Tooltip del icono. El puerto aparece solo cuando NO es el habitual, que es
+    justo el caso en el que el usuario necesita saberlo.
+    """
+    estado = "paused" if paused else "tracking"
+    sufijo = f" (:{PORT})" if PORT != instance.DEFAULT_PORT else ""
+    return f"TimeTrack — {estado}{sufijo}"
+
+
 def _toggle_pause(icon, _item):
     """Alterna pausa/reanuda y actualiza el icono y tooltip."""
     if tracker.is_paused():
         tracker.resume()
         icon.icon    = _make_icon_image(paused=False)
-        icon.title   = "TimeTrack — tracking"
+        icon.title   = _title(paused=False)
     else:
         tracker.pause()
         icon.icon    = _make_icon_image(paused=True)
-        icon.title   = "TimeTrack — paused"
+        icon.title   = _title(paused=True)
 
 
 def _pause_label(item) -> str:
@@ -125,7 +144,31 @@ def _quit(icon, _item):
         tracker.stop()
     except Exception:
         pass
+    # Suelta el candado y borra instance.json: sin esto, el siguiente arranque
+    # tendría que descubrir por sondeo que ya no hay nadie.
+    try:
+        instance.release()
+    except Exception:
+        pass
     os._exit(0)
+
+
+def _orderly_shutdown():
+    """
+    Cierre a petición de una instancia más nueva (POST /api/instance/shutdown).
+    Mismo orden que _quit, pero sin matar el proceso: de eso se encarga
+    instance.shutdown_now() una vez ha salido la respuesta HTTP.
+    """
+    logger.info("Una versión más nueva pide el relevo; cerrando ordenadamente...")
+    if _icon_ref is not None:
+        try:
+            _icon_ref.stop()
+        except Exception:
+            pass
+    try:
+        tracker.stop()
+    except Exception:
+        logger.exception("No pude detener el tracker al ser relevado")
 
 
 def _respond_game(exe_name: str, action: str):
@@ -185,7 +228,7 @@ def build_tray_icon():
     return pystray.Icon(
         "TimeTrack",
         _make_icon_image(paused=False),
-        "TimeTrack — tracking",
+        _title(paused=False),
         menu=menu,
     )
 
@@ -223,11 +266,26 @@ def run_server():
 
 
 def main():
+    global PORT, _icon_ref
+
     logger.info("=" * 48)
-    logger.info("  TimeTrack arrancando...")
-    logger.info("  Dashboard -> http://127.0.0.1:%d", PORT)
+    logger.info("  TimeTrack v%s arrancando...", __version__)
     logger.info("  Datos -> %s", DATA_DIR)
     logger.info("  Log   -> %s", LOG_FILE)
+
+    # Portero: una sola instancia por carpeta de datos y un puerto que de
+    # verdad esté libre. Devuelve None cuando ya hay una instancia que debe
+    # seguir siendo la buena — entonces nos limitamos a salir, porque ella ya
+    # ha abierto su dashboard.
+    port = instance.startup_guard()
+    if port is None:
+        logger.info("=" * 48)
+        return
+    PORT = port
+    instance.write_lock(PORT)
+    instance.set_shutdown_hook(_orderly_shutdown)
+
+    logger.info("  Dashboard -> http://127.0.0.1:%d", PORT)
     logger.info("=" * 48)
     if MIGRATED_FILES:
         logger.info("Datos de una versión anterior movidos a %s: %s",
@@ -237,8 +295,23 @@ def main():
     server_thread = threading.Thread(target=run_server, daemon=True, name="uvicorn")
     server_thread.start()
 
+    def _check_autostart():
+        # Espera a que init_db() (disparado por el evento startup de FastAPI)
+        # haya creado la tabla settings; si no, autostart.reconcile() explota
+        # con "no such table" en un hilo sin consola donde nadie vería el error.
+        if not _wait_for_server():
+            logger.warning("Autostart: el servidor no respondió a tiempo; comprobación omitida")
+            return
+        try:
+            autostart.reconcile()
+        except Exception:
+            logger.exception("Autostart: fallo al comprobar/reparar el acceso directo")
+
+    threading.Thread(target=_check_autostart, daemon=True, name="autostart").start()
+
     try:
         icon = build_tray_icon()
+        _icon_ref = icon
 
         # Abrir browser cuando el servidor esté listo
         def _open_when_ready():

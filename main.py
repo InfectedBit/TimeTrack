@@ -17,6 +17,8 @@ from fastapi.responses import FileResponse
 
 from core.database import init_db, IMAGES_DIR
 from core.tracker import tracker
+from core.version import __version__
+from core import instance
 from api.routes import router
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -30,7 +32,7 @@ logger = logging.getLogger("main")
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="TimeTrack",
-    version="1.0.0",
+    version=__version__,
     docs_url="/docs",
     redoc_url=None,
 )
@@ -105,12 +107,20 @@ def on_shutdown():
 
 # ── Entrada directa ───────────────────────────────────────────────────────────
 
-# Puerto configurable por entorno: permite convivir con otra instancia o salvar
-# un conflicto con otro programa sin tocar el código.
-PORT = int(os.environ.get("TIMETRACK_PORT", "31337"))
+# Puerto PREFERIDO, configurable por entorno. El definitivo lo decide
+# instance.startup_guard() al arrancar: si está ocupado, busca el siguiente libre.
+PORT = instance.preferred_port()
 
 if __name__ == "__main__":
     import webbrowser, threading
+
+    # Mismo portero que en tray.py: ni dos trackers sobre una base, ni un bind
+    # a un puerto ya ocupado.
+    _port = instance.startup_guard()
+    if _port is None:
+        sys.exit(0)
+    PORT = _port
+    instance.write_lock(PORT)
 
     def _open_browser():
         import time
@@ -120,4 +130,7 @@ if __name__ == "__main__":
     threading.Thread(target=_open_browser, daemon=True).start()
 
     logger.info("Dashboard → http://127.0.0.1:%d", PORT)
-    uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
+    try:
+        uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
+    finally:
+        instance.release()

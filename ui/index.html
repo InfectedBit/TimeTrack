@@ -2211,6 +2211,7 @@ async function confirmMove() {
 // ── Settings — switchSettingsTab is in shared.js (handles Visual/Tracker/Arte/Profiles) ──
 
 async function openSettings() {
+  loadVersionTag();
   // Visual tab: mode + theme + accent
   const prefs = getPrefs();
   const mode  = prefs.detail_mode || 'panel';
@@ -2237,8 +2238,7 @@ async function openSettings() {
     const appSettings = await api('/api/settings');
     document.getElementById('gameDetectToggle').checked = !!appSettings.game_detect;
     document.getElementById('showImagesToggle').checked = !!appSettings.show_app_images;
-    document.querySelectorAll('#notifModeOpts .fmt-opt').forEach(b =>
-      b.classList.toggle('selected', b.dataset.mode === (appSettings.notification_mode || 'tray')));
+    _syncNotifModeUI(appSettings.notification_mode || 'tray');
     const dismissed = await api('/api/dismissed-games');
     const cnt = document.getElementById('dismissedCount');
     if (cnt) cnt.textContent = dismissed.length ? `${dismissed.length} entrada(s)` : '';
@@ -2246,6 +2246,7 @@ async function openSettings() {
     renderDetectMethods(appSettings.detect_methods || []);
     loadNotifStatus();
     loadGamePaths();
+    loadAutostartStatus();
     // Arte tab
     const aft=document.getElementById('autoFetchToggle'); if(aft) aft.checked=!!appSettings.auto_fetch_images;
     ['sgdbKeyInput','rawgKeyInput'].forEach(id => {
@@ -2745,12 +2746,6 @@ async function setGameDetect(enabled) {
     auto_detect: status.auto_detect,
     game_detect: enabled,
   });
-}
-
-async function setNotifMode(mode) {
-  await api('/api/settings', 'POST', { notification_mode: mode });
-  document.querySelectorAll('#notifModeOpts .fmt-opt').forEach(b =>
-    b.classList.toggle('selected', b.dataset.mode === mode));
 }
 
 async function clearDismissed() {

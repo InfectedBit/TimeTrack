@@ -3,15 +3,19 @@ AppTracker — API Routes
 Todos los endpoints REST. Perfectamente alineados con lo que llama la UI.
 """
 
+import os
 import psutil
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Body
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Body, Request
 from pydantic import BaseModel
 from typing import Optional
 
 from core import database as db
+from core import instance
+from core import autostart
 from core.database import IMAGES_DIR
 from core.tracker import tracker
+from core.version import __version__, version_tuple
 
 router = APIRouter(prefix="/api")
 
@@ -85,6 +89,57 @@ def tracker_settings(body: TrackerSettings):
     if body.game_detect is not None:
         tracker.set_game_detect(body.game_detect)
     return {"ok": True}
+
+
+# ── Instancia ─────────────────────────────────────────────────────────────────
+
+@router.get("/instance")
+def instance_info():
+    """
+    Identidad de esta instancia. La lee un segundo arranque para decidir si
+    cederle el paso (misma versión o más vieja) o relevarla (más nueva).
+    """
+    return instance.describe()
+
+
+@router.post("/instance/shutdown")
+def instance_shutdown(request: Request):
+    """
+    Cierre ordenado a petición de una instancia más nueva: cierra las sesiones
+    abiertas, retira el icono de la bandeja y libera el puerto.
+
+    La cabecera es obligatoria y hace de anti-CSRF: una página web cualquiera no
+    puede añadir cabeceras propias sin un preflight CORS, que no respondemos.
+    """
+    claimed = request.headers.get(instance.TAKEOVER_HEADER)
+    if not claimed:
+        raise HTTPException(403, f"{instance.TAKEOVER_HEADER} header required")
+
+    if version_tuple(claimed) <= version_tuple(__version__):
+        raise HTTPException(
+            409,
+            f"v{claimed} no es más nueva que la que está corriendo (v{__version__})",
+        )
+
+    instance.shutdown_now()
+    return {"ok": True, "pid": os.getpid(), "version": __version__}
+
+
+# ── Inicio automático ─────────────────────────────────────────────────────────
+
+class AutostartSettings(BaseModel):
+    enabled: bool
+
+
+@router.get("/autostart/status")
+def autostart_status():
+    return autostart.status()
+
+
+@router.post("/autostart")
+def autostart_set(body: AutostartSettings):
+    """Activa/desactiva el inicio con Windows. Crea o borra el acceso directo al momento."""
+    return autostart.set_enabled(body.enabled)
 
 
 # ── Perfiles ──────────────────────────────────────────────────────────────────
@@ -570,7 +625,7 @@ def respond_pending_game(exe_name: str, body: GameResponse):
 # ── Global settings ───────────────────────────────────────────────────────────
 
 class AppSettings(BaseModel):
-    notification_mode: Optional[str]       = None   # 'toast' | 'tray'
+    notification_mode: Optional[str]       = None   # 'toast' | 'tray' | 'off'
     detect_methods:    Optional[list[str]] = None
     show_app_images:   Optional[bool]      = None
     auto_fetch_images: Optional[bool]      = None
@@ -599,7 +654,7 @@ def get_app_settings():
 @router.post("/settings")
 def update_app_settings(body: AppSettings):
     """Actualiza configuración global."""
-    if body.notification_mode in ("toast", "tray"):
+    if body.notification_mode in ("toast", "tray", "off"):
         db.set_setting("notification_mode", body.notification_mode)
     if body.detect_methods is not None:
         valid   = {"launcher", "custom", "gamemode", "nvidia", "heuristic"}

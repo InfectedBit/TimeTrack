@@ -105,6 +105,9 @@ def toast_status() -> dict:
 def send_test_toast(mode: str = "toast", tray_icon=None) -> dict:
     """Lanza una notificación de prueba desde Ajustes y dice qué ocurrió."""
     icon = tray_icon or _tray_icon_ref
+    if mode not in ("toast", "tray"):
+        return {"ok": False, "sent": "none",
+                "detail": "Las notificaciones del sistema están desactivadas."}
     if mode == "toast" and not TOAST_AVAILABLE:
         return {"ok": False, "sent": "none",
                 "detail": "win11toast no está disponible en esta instalación."}
@@ -151,9 +154,17 @@ def send_game_prompt(
 ):
     """
     Show a game tracking prompt.
-    mode: 'toast' | 'tray'
+    mode: 'toast' | 'tray' | 'off'
+
+    'off' solo omite el aviso del sistema operativo — el tracker ya encoló el
+    juego como pendiente antes de llamar aquí, así que el aviso con
+    Sí/No/No preguntar más sigue apareciendo dentro de la app (dashboard y
+    Manage Apps). La decisión de añadir una app nunca depende de un toast.
+
     Callbacks (on_yes / on_no / on_never) are invoked from a background thread.
     """
+    if mode not in ("toast", "tray"):
+        return
     if mode == "toast" and TOAST_AVAILABLE:
         _toast_prompt(exe_name, display_name, on_yes, on_no, on_never)
     else:
