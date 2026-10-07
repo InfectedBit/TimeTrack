@@ -272,16 +272,24 @@ def add_tracked_app(
     category: str = "other",
     color: str = "#6366f1",
     auto_detected: int = 0,
+    main_process_only: int = 1,
 ) -> int:
-    """Inserta o ignora si ya existe. Retorna el app_id."""
+    """
+    Inserta o ignora si ya existe. Retorna el app_id.
+
+    main_process_only=1 por defecto: una app recién añadida cuenta solo su
+    proceso principal, no los subprocesos/helpers que lanza (p. ej. los
+    procesos renderer de Chrome). El usuario puede desactivarlo luego desde
+    Editar si de verdad quiere sumar todos los subprocesos.
+    """
     exe_name = exe_name.lower().strip()
     if not display_name:
         display_name = exe_name.replace(".exe", "").replace("-", " ").replace("_", " ").title()
     cur = _q("""
         INSERT OR IGNORE INTO tracked_apps
-            (profile_id, exe_name, display_name, category, color, auto_detected)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (profile_id, exe_name, display_name, category, color, auto_detected))
+            (profile_id, exe_name, display_name, category, color, auto_detected, main_process_only)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (profile_id, exe_name, display_name, category, color, auto_detected, main_process_only))
     _commit()
     if cur.lastrowid:
         return cur.lastrowid

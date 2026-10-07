@@ -11,7 +11,7 @@ anuncia el ejecutable es más baja que la que ya corre, el nuevo .exe cederá el
 paso al viejo y el usuario creerá que la actualización no se ha aplicado.
 """
 
-__version__ = "0.16.0"
+__version__ = "0.16.1"
 
 
 def version_tuple(raw) -> tuple[int, int, int]:

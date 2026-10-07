@@ -383,7 +383,7 @@ class ProcessTracker:
                     exe_map[exe] = {
                         "app_id":           app_id,
                         "cmdline_match":    None,
-                        "main_process_only": 0,
+                        "main_process_only": 1,
                     }
                     logger.info("[Tracker] Auto-añadido: %s (app_id=%d)", exe, app_id)
             with self._lock:
@@ -406,7 +406,7 @@ class ProcessTracker:
 
                 # Añadir a tracked_apps inmediatamente → la sesión empieza a grabarse
                 app_id = add_tracked_app(profile_id, exe, display_name, auto_detected=1)
-                app_entry = {"app_id": app_id, "cmdline_match": None, "main_process_only": 0}
+                app_entry = {"app_id": app_id, "cmdline_match": None, "main_process_only": 1}
 
                 with self._lock:
                     self._exe_map[exe] = app_entry          # activa tracking en el próximo scan
